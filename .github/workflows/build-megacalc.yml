@@ -21,7 +21,7 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Prepare Android Project & Copy PNG Icon
+      - name: Prepare Android Project & PNG Icon
         run: |
           rm -rf android-app
           mkdir -p android-app/app/src/main/java/ir/matinmohammadi/megacalc
@@ -35,19 +35,22 @@ jobs:
         env:
           KEYSTORE_B64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
         run: |
+          mkdir -p android-app/app
           echo "$KEYSTORE_B64" | tr -d ' \n\r\t' | base64 --decode > android-app/app/release.keystore
 
-      - name: Build Signed Release APK
+      - name: Build Signed Release APK with Gradle Wrapper
         run: |
+          cd android-app
+
           printf '%s\n' \
             'rootProject.name = "MegaCalc"' \
             'include ":app"' \
-            > android-app/settings.gradle
+            > settings.gradle
 
           printf '%s\n' \
             'org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8' \
             'android.useAndroidX=false' \
-            > android-app/gradle.properties
+            > gradle.properties
 
           printf '%s\n' \
             'buildscript {' \
@@ -55,7 +58,7 @@ jobs:
             '    dependencies { classpath "com.android.tools.build:gradle:8.2.2" }' \
             '}' \
             'allprojects { repositories { google(); mavenCentral() } }' \
-            > android-app/build.gradle
+            > build.gradle
 
           printf '%s\n' \
             'apply plugin: "com.android.application"' \
@@ -66,8 +69,8 @@ jobs:
             '        applicationId "ir.matinmohammadi.megacalc"' \
             '        minSdkVersion 21' \
             '        targetSdkVersion 34' \
-            '        versionCode 16' \
-            '        versionName "1.6.0"' \
+            '        versionCode 20' \
+            '        versionName "1.7.0"' \
             '    }' \
             '    signingConfigs {' \
             '        release {' \
@@ -88,7 +91,7 @@ jobs:
             '        targetCompatibility JavaVersion.VERSION_17' \
             '    }' \
             '}' \
-            > android-app/app/build.gradle
+            > app/build.gradle
 
           printf '%s\n' \
             '<?xml version="1.0" encoding="utf-8"?>' \
@@ -102,7 +105,7 @@ jobs:
             '        </activity>' \
             '    </application>' \
             '</manifest>' \
-            > android-app/app/src/main/AndroidManifest.xml
+            > app/src/main/AndroidManifest.xml
 
           printf '%s\n' \
             'package ir.matinmohammadi.megacalc;' \
@@ -140,10 +143,11 @@ jobs:
             '        webView.loadUrl("file:///android_asset/index.html");' \
             '    }' \
             '}' \
-            > android-app/app/src/main/java/ir/matinmohammadi/megacalc/MainActivity.java
+            > app/src/main/java/ir/matinmohammadi/megacalc/MainActivity.java
 
-          cd android-app
-          gradle assembleRelease --no-daemon
+          # ساخت گریدل وِرپِر اختصاصی با نسخه سازگار (8.5)
+          gradle wrapper --gradle-version 8.5
+          ./gradlew assembleRelease --no-daemon
 
       - name: Upload Signed Release APK
         uses: actions/upload-artifact@v4
@@ -155,8 +159,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: success()
         with:
-          tag_name: v1.6.${{ github.run_number }}
-          name: "MegaCalc v1.6.${{ github.run_number }} (PNG Icon + Smooth Update)"
+          tag_name: v1.7.${{ github.run_number }}
+          name: "MegaCalc v1.7.${{ github.run_number }} (Gradle Wrapper Fix)"
           files: android-app/app/build/outputs/apk/release/app-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
