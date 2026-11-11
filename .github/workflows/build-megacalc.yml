@@ -5,6 +5,9 @@ on:
     branches: [ "main", "master" ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -18,23 +21,114 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Cordova & Create Project
+      - name: Build Pure Native Android APK
         run: |
-          npm install -g cordova
-          cordova create app ir.matinmohammadi.megacalc "MegaCalc"
-          cp index.html app/www/index.html
-          cd app
-          cordova platform add android
-          cordova build android --debug
+          mkdir -p android-app/app/src/main/java/ir/matinmohammadi/megacalc
+          mkdir -p android-app/app/src/main/assets
+          cp index.html android-app/app/src/main/assets/index.html
+
+          cat << 'GRADLE_ROOT' > android-app/settings.gradle
+          rootProject.name = "MegaCalc"
+          include ':app'
+          GRADLE_ROOT
+
+          cat << 'GRADLE_PROPS' > android-app/gradle.properties
+          org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+          android.useAndroidX=false
+          GRADLE_PROPS
+
+          cat << 'GRADLE_BUILD' > android-app/build.gradle
+          buildscript {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+              dependencies {
+                  classpath 'com.android.tools.build:gradle:8.2.2'
+              }
+          }
+          allprojects {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          GRADLE_BUILD
+
+          cat << 'APP_BUILD' > android-app/app/build.gradle
+          apply plugin: 'com.android.application'
+
+          android {
+              namespace 'ir.matinmohammadi.megacalc'
+              compileSdkVersion 34
+
+              defaultConfig {
+                  applicationId "ir.matinmohammadi.megacalc"
+                  minSdkVersion 21
+                  targetSdkVersion 34
+                  versionCode 1
+                  versionName "1.0"
+              }
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+          }
+          APP_BUILD
+
+          cat << 'MANIFEST' > android-app/app/src/main/AndroidManifest.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <application
+                  android:label="MegaCalc"
+                  android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true"
+                      android:configChanges="orientation|screenSize|keyboardHidden">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          MANIFEST
+
+          cat << 'JAVA_MAIN' > android-app/app/src/main/java/ir/matinmohammadi/megacalc/MainActivity.java
+          package ir.matinmohammadi.megacalc;
+
+          import android.app.Activity;
+          import android.os.Bundle;
+          import android.webkit.WebSettings;
+          import android.webkit.WebView;
+          import android.webkit.WebChromeClient;
+          import android.graphics.Color;
+
+          public class MainActivity extends Activity {
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  WebView webView = new WebView(this);
+                  webView.setBackgroundColor(Color.parseColor("#070a12"));
+                  WebSettings settings = webView.getSettings();
+                  settings.setJavaScriptEnabled(true);
+                  settings.setDomStorageEnabled(true);
+                  webView.setWebChromeClient(new WebChromeClient());
+                  setContentView(webView);
+                  webView.loadUrl("file:///android_asset/index.html");
+              }
+          }
+          JAVA_MAIN
+
+          cd android-app
+          gradle assembleDebug --no-daemon
 
       - name: Upload MegaCalc APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: MegaCalc-APK
-          path: app/platforms/android/app/build/outputs/apk/debug/app-debug.apk
+          path: android-app/app/build/outputs/apk/debug/app-debug.apk
 
       - name: Publish Automatic Release
         uses: softprops/action-gh-release@v2
@@ -42,6 +136,6 @@ jobs:
         with:
           tag_name: v1.0.${{ github.run_number }}
           name: "MegaCalc v1.0.${{ github.run_number }} (No e+ Edition)"
-          files: app/platforms/android/app/build/outputs/apk/debug/app-debug.apk
+          files: android-app/app/build/outputs/apk/debug/app-debug.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
