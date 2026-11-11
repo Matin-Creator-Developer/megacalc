@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>MegaCalc | ماشین‌حساب نجومی متین</title>
+  <style>
+    :root {
+      --bg: #070a12;
+      --screen-bg: #0f1626;
+      --btn-bg: #162035;
+      --btn-op: #231942;
+      --neon-cyan: #00f5d4;
+      --neon-purple: #9b5de5;
+      --neon-orange: #f97316;
+      --neon-gold: #fbbf24;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; font-family: system-ui, -apple-system, sans-serif; user-select: none; }
+    body {
+      margin: 0; padding: 12px;
+      background-color: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow: hidden;
+    }
+    .top-bar {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 4px 8px; font-size: 13px; font-weight: 900; color: var(--neon-cyan);
+    }
+    .display-card {
+      background: var(--screen-bg);
+      border: 1.5px solid rgba(0, 245, 212, 0.28);
+      border-radius: 22px;
+      padding: 14px 16px;
+      flex: 1;
+      margin: 8px 0 12px 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      overflow-y: auto;
+      box-shadow: inset 0 0 25px rgba(0,0,0,0.45);
+    }
+    .expr-box {
+      direction: ltr;
+      text-align: right;
+      font-size: 19px;
+      color: var(--muted);
+      word-break: break-all;
+      line-height: 1.45;
+      margin-bottom: 8px;
+      min-height: 28px;
+    }
+    .result-raw-box {
+      direction: ltr;
+      text-align: right;
+      font-size: 28px;
+      font-weight: 900;
+      color: var(--neon-cyan);
+      word-break: break-all;
+      line-height: 1.35;
+      letter-spacing: 0.5px;
+      padding-bottom: 8px;
+      border-bottom: 1px dashed rgba(148,163,184,0.2);
+    }
+    .words-breakdown-box {
+      margin-top: 10px;
+      text-align: right;
+      direction: rtl;
+      font-size: 13.5px;
+      line-height: 1.75;
+      color: var(--text);
+      background: rgba(155, 93, 229, 0.12);
+      border: 1px solid rgba(155, 93, 229, 0.4);
+      border-radius: 14px;
+      padding: 10px 12px;
+      max-height: 38%;
+      overflow-y: auto;
+    }
+    .unit-badge {
+      display: inline-block;
+      background: rgba(0, 245, 212, 0.14);
+      border: 1px solid var(--neon-cyan);
+      color: var(--neon-cyan);
+      border-radius: 8px;
+      padding: 1px 7px;
+      margin: 2px 3px;
+      font-weight: 900;
+      font-size: 12.5px;
+    }
+    .unit-badge.high-tier {
+      background: rgba(251, 191, 36, 0.16);
+      border-color: var(--neon-gold);
+      color: var(--neon-gold);
+    }
+    .keypad {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      padding-bottom: 4px;
+    }
+    .key-btn {
+      background: var(--btn-bg);
+      border: 1px solid rgba(255,255,255,0.07);
+      color: var(--text);
+      border-radius: 18px;
+      height: 62px;
+      font-size: 23px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: transform 0.08s, background 0.15s;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    }
+    .key-btn:active { transform: scale(0.93); background: #22304d; }
+    .key-op { background: var(--btn-op); color: var(--neon-purple); border-color: rgba(155,93,229,0.35); font-size: 25px; }
+    .key-ac { background: rgba(239,68,68,0.18); color: #f87171; border-color: rgba(239,68,68,0.4); font-size: 20px; }
+    .key-del { background: rgba(249,115,22,0.18); color: var(--neon-orange); border-color: rgba(249,115,22,0.4); font-size: 20px; }
+    .key-eq {
+      background: linear-gradient(135deg, var(--neon-orange), #fbbf24);
+      color: #070a12;
+      font-size: 28px;
+      font-weight: 900;
+      border: none;
+    }
+    .key-zeros { font-size: 18px; color: var(--neon-gold); font-weight: 900; }
+  </style>
+</head>
+<body>
+
+  <div class="top-bar">
+    <span>⚡ MegaCalc <small style="color:var(--neon-gold);">ضد e+ و نامحدود</small></span>
+    <button onclick="copyExactResult()" style="background:rgba(0,245,212,0.12); border:1px solid var(--neon-cyan); color:var(--neon-cyan); border-radius:9px; padding:4px 10px; font-size:11.5px; font-weight:800; cursor:pointer;">📋 کپی عدد کامل</button>
+  </div>
+
+  <div class="display-card" id="displayCard">
+    <div class="expr-box" id="exprBox">0</div>
+    <div class="result-raw-box" id="resultRawBox">= 0</div>
+    <div class="words-breakdown-box" id="wordsBox">
+      💡 اعداد رو وارد کن رفیق! هر چقدر هم بزرگ بشه، بدون <b>e+</b> تمام رقم‌هاش رو می‌نویسم و از میلیارد به بالا برات معنی می‌کنم!
+    </div>
+  </div>
+
+  <div class="keypad">
+    <button class="key-btn key-ac" onclick="clearAll()">C</button>
+    <button class="key-btn key-del" onclick="backspace()">⌫</button>
+    <button class="key-btn key-zeros" onclick="appendDigits('000')">000</button>
+    <button class="key-btn key-op" onclick="appendOp('÷')">÷</button>
+
+    <button class="key-btn" onclick="appendDigits('7')">7</button>
+    <button class="key-btn" onclick="appendDigits('8')">8</button>
+    <button class="key-btn" onclick="appendDigits('9')">9</button>
+    <button class="key-btn key-op" onclick="appendOp('×')">×</button>
+
+    <button class="key-btn" onclick="appendDigits('4')">4</button>
+    <button class="key-btn" onclick="appendDigits('5')">5</button>
+    <button class="key-btn" onclick="appendDigits('6')">6</button>
+    <button class="key-btn key-op" onclick="appendOp('-')">−</button>
+
+    <button class="key-btn" onclick="appendDigits('1')">1</button>
+    <button class="key-btn" onclick="appendDigits('2')">2</button>
+    <button class="key-btn" onclick="appendDigits('3')">3</button>
+    <button class="key-btn key-op" onclick="appendOp('+')">+</button>
+
+    <button class="key-btn key-zeros" onclick="appendDigits('00')">00</button>
+    <button class="key-btn" onclick="appendDigits('0')">0</button>
+    <button class="key-btn" onclick="appendDot()">.</button>
+    <button class="key-btn key-eq" onclick="lockResult()">=</button>
+  </div>
+
+  <script>
+    let rawExpression = "";
+    let lastCleanResult = "0";
+
+    // نام تمام طبقات ۳ رقمی تا ۶۶ رقم!
+    const SCALE_NAMES = [
+      "",
+      "هزار",
+      "میلیون",
+      "میلیارد",
+      "تریلیون (هزار میلیارد / همت)",
+      "کوادریلیون (میلیون میلیارد)",
+      "کوینتیلیون (میلیارد میلیارد)",
+      "سکستیلیون",
+      "سپتیلیون",
+      "اکتیلیون",
+      "نونیلیون",
+      "دسیلیون",
+      "آندسیلیون",
+      "دودسیلیون",
+      "تریدسیلیون",
+      "کواتوردسیلیون",
+      "کویندسیلیون",
+      "سکسدسیلیون",
+      "سپتندسیلیون",
+      "اکتودسیلیون",
+      "نومدسیلیون",
+      "ویجینتیلیون"
+    ];
+
+    function addCommasToInteger(intStr) {
+      let sign = "";
+      if (intStr.startsWith("-")) {
+        sign = "-";
+        intStr = intStr.slice(1);
+      }
+      return sign + intStr.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    }
+
+    function formatExpressionDisplay(expr) {
+      if (!expr) return "0";
+      return expr.replace(/\d+(\.\d+)?/g, (match) => {
+        const parts = match.split(".");
+        parts[0] = addCommasToInteger(parts[0]);
+        return parts.join(".");
+      });
+    }
+
+    // موتور محاسبه دقیق اعداد اعشاری و صحیحِ بی‌نهایت بزرگ با BigInt (بدون هیچ گونه e+)
+    function parseBigDecimal(str) {
+      let sign = 1n;
+      if (str.startsWith("-")) { sign = -1n; str = str.slice(1); }
+      if (str.startsWith("+")) { str = str.slice(1); }
+      const parts = str.split(".");
+      const intPart = parts[0] || "0";
+      const fracPart = parts[1] || "";
+      const scale = BigInt(fracPart.length);
+      const combined = (intPart + fracPart).replace(/^0+/, "") || "0";
+      return { val: sign * BigInt(combined), scale: Number(scale) };
+    }
+
+    function formatBigDecimal(bd) {
+      let isNeg = bd.val < 0n;
+      let v = isNeg ? -bd.val : bd.val;
+      let s = v.toString();
+      if (bd.scale > 0) {
+        if (s.length <= bd.scale) {
+          s = "0." + "0".repeat(bd.scale - s.length) + s;
+        } else {
+          const cut = s.length - bd.scale;
+          s = s.slice(0, cut) + "." + s.slice(cut);
+        }
+        s = s.replace(/\.?0+$/, "");
+      }
+      return (isNeg && s !== "0" ? "-" : "") + s;
+    }
+
+    function addBD(a, b) {
+      const maxS = Math.max(a.scale, b.scale);
+      const vA = a.val * (10n ** BigInt(maxS - a.scale));
+      const vB = b.val * (10n ** BigInt(maxS - b.scale));
+      return { val: vA + vB, scale: maxS };
+    }
+
+    function subBD(a, b) {
+      return addBD(a, { val: -b.val, scale: b.scale });
+    }
+
+    function mulBD(a, b) {
+      return { val: a.val * b.val, scale: a.scale + b.scale };
+    }
+
+    function divBD(a, b) {
+      if (b.val === 0n) throw new Error("DIV_ZERO");
+      const extraPrecision = 10;
+      const scaleDiff = (b.scale - a.scale) + extraPrecision;
+      let num = a.val;
+      let den = b.val;
+      let finalScale = extraPrecision;
+      if (scaleDiff >= 0) {
+        num = num * (10n ** BigInt(scaleDiff));
+      } else {
+        den = den * (10n ** BigInt(-scaleDiff));
+      }
+      return { val: num / den, scale: finalScale };
+    }
+
+    function evaluateExactExpression(expr) {
+      let clean = expr.replace(/[×÷+\-.]+$/, "");
+      if (!clean) return "0";
+
+      const tokens = [];
+      let i = 0;
+      while (i < clean.length) {
+        const ch = clean[i];
+        if ((ch === "-" || ch === "+") && (i === 0 || "×÷+-".includes(clean[i - 1]))) {
+          let numStr = ch;
+          i++;
+          while (i < clean.length && /[\d.]/.test(clean[i])) { numStr += clean[i]; i++; }
+          tokens.push({ type: "num", bd: parseBigDecimal(numStr) });
+        } else if (/[\d.]/.test(ch)) {
+          let numStr = "";
+          while (i < clean.length && /[\d.]/.test(clean[i])) { numStr += clean[i]; i++; }
+          tokens.push({ type: "num", bd: parseBigDecimal(numStr) });
+        } else if ("×÷+-".includes(ch)) {
+          tokens.push({ type: "op", op: ch });
+          i++;
+        } else {
+          i++;
+        }
+      }
+
+      if (!tokens.length) return "0";
+
+      // اولویت اول: ضرب و تقسیم
+      let pass1 = [tokens[0]];
+      for (let j = 1; j < tokens.length; j += 2) {
+        const opObj = tokens[j];
+        const nextNum = tokens[j + 1];
+        if (!nextNum) break;
+        const prev = pass1[pass1.length - 1];
+        if (opObj.op === "×") {
+          pass1[pass1.length - 1] = { type: "num", bd: mulBD(prev.bd, nextNum.bd) };
+        } else if (opObj.op === "÷") {
+          pass1[pass1.length - 1] = { type: "num", bd: divBD(prev.bd, nextNum.bd) };
+        } else {
+          pass1.push(opObj, nextNum);
+        }
+      }
+
+      // اولویت دوم: جمع و تفریق
+      let acc = pass1[0].bd;
+      for (let j = 1; j < pass1.length; j += 2) {
+        const op = pass1[j].op;
+        const nextBd = pass1[j + 1].bd;
+        if (op === "+") acc = addBD(acc, nextBd);
+        else if (op === "-") acc = subBD(acc, nextBd);
+      }
+
+      return formatBigDecimal(acc);
+    }
+
+    // تبدیل عدد به تفکیک ۳ رقمی همراه با نام دقیق از میلیارد به بالا
+    function buildScaleBreakdownHtml(numStr) {
+      if (!numStr || numStr === "0") return "۰ (صفر)";
+      let isNeg = false;
+      if (numStr.startsWith("-")) { isNeg = true; numStr = numStr.slice(1); }
+
+      const parts = numStr.split(".");
+      const intStr = parts[0] || "0";
+      const fracStr = parts[1] || "";
+
+      // شکستن از راست به بسته‌های ۳ رقمی
+      const groups = [];
+      for (let i = intStr.length; i > 0; i -= 3) {
+        groups.push(intStr.slice(Math.max(0, i - 3), i));
+      }
+
+      const totalDigits = intStr.length;
+      const badges = [];
+
+      for (let idx = groups.length - 1; idx >= 0; idx--) {
+        const val = parseInt(groups[idx], 10);
+        if (val === 0) continue;
+        const scaleName = SCALE_NAMES[idx] !== undefined ? SCALE_NAMES[idx] : `(۱۰ به توان ${idx * 3})`;
+        const isBillionOrMore = idx >= 3;
+        const badgeClass = isBillionOrMore ? "unit-badge high-tier" : "unit-badge";
+        badges.push(`<span class="${badgeClass}">${val} ${scaleName}</span>`);
+      }
+
+      let headerInfo = `<div style="font-size:11.5px; color:var(--muted); margin-bottom:6px;">📏 تعداد ارقام صحیح: <b style="color:var(--neon-cyan);">${totalDigits} رقم</b> ${totalDigits >= 10 ? "🔥 (عبور از مرز میلیارد!)" : ""}</div>`;
+
+      let bodyHtml = badges.length > 0 ? badges.join(" و ") : "۰";
+      if (isNeg) bodyHtml = "منفی " + bodyHtml;
+      if (fracStr) bodyHtml += ` <span class="unit-badge">ممیز ${fracStr}</span>`;
+
+      return headerInfo + `<div>${bodyHtml}</div>`;
+    }
+
+    function updateScreen() {
+      const exprEl = document.getElementById("exprBox");
+      const rawEl = document.getElementById("resultRawBox");
+      const wordsEl = document.getElementById("wordsBox");
+
+      exprEl.textContent = formatExpressionDisplay(rawExpression);
+
+      try {
+        const exactStr = evaluateExactExpression(rawExpression);
+        lastCleanResult = exactStr;
+        const parts = exactStr.split(".");
+        const formattedExact = addCommasToInteger(parts[0]) + (parts[1] ? "." + parts[1] : "");
+
+        // تنظیم هوشمند سایز فونت اگر عدد خیلی غول‌پیکر شد، اما همیشه کامل و چندخطی!
+        if (formattedExact.length > 36) rawEl.style.fontSize = "19px";
+        else if (formattedExact.length > 20) rawEl.style.fontSize = "23px";
+        else rawEl.style.fontSize = "28px";
+
+        rawEl.textContent = "= " + formattedExact;
+        wordsEl.innerHTML = buildScaleBreakdownHtml(exactStr);
+      } catch (e) {
+        if (e.message === "DIV_ZERO") {
+          rawEl.textContent = "⛔ تقسیم بر صفر!";
+          wordsEl.innerHTML = "رفیق هیچ عددی رو نمی‌شه بر صفر تقسیم کرد!";
+        }
+      }
+    }
+
+    function appendDigits(d) {
+      rawExpression += d;
+      updateScreen();
+    }
+
+    function appendOp(op) {
+      if (!rawExpression) {
+        if (op === "-") { rawExpression = "-"; updateScreen(); }
+        return;
+      }
+      if ("×÷+-".includes(rawExpression.slice(-1))) {
+        rawExpression = rawExpression.slice(0, -1) + op;
+      } else {
+        rawExpression += op;
+      }
+      updateScreen();
+    }
+
+    function appendDot() {
+      const parts = rawExpression.split(/[×÷+\-]/);
+      const currentNum = parts[parts.length - 1] || "";
+      if (!currentNum.includes(".")) {
+        rawExpression += (currentNum === "" ? "0." : ".");
+        updateScreen();
+      }
+    }
+
+    function backspace() {
+      rawExpression = rawExpression.slice(0, -1);
+      updateScreen();
+    }
+
+    function clearAll() {
+      rawExpression = "";
+      lastCleanResult = "0";
+      updateScreen();
+    }
+
+    function lockResult() {
+      if (lastCleanResult && lastCleanResult !== "0") {
+        rawExpression = lastCleanResult;
+        updateScreen();
+      }
+    }
+
+    function copyExactResult() {
+      const parts = lastCleanResult.split(".");
+      const formatted = addCommasToInteger(parts[0]) + (parts[1] ? "." + parts[1] : "");
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(formatted);
+        alert("✅ عدد کامل کپی شد:\n" + formatted);
+      }
+    }
+  </script>
+</body>
+</html>
