@@ -3,12 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>MegaCalc | ماشین‌حساب نجومی متین</title>
+  <title>MegaCalc | ماشین‌حساب نجومی و بی‌نهایت</title>
   <style>
     :root {
       --bg: #070a12;
       --screen-bg: #0f1626;
+      --screen-border: rgba(0, 245, 212, 0.28);
       --btn-bg: #162035;
+      --btn-active: #22304d;
       --btn-op: #231942;
       --neon-cyan: #00f5d4;
       --neon-purple: #9b5de5;
@@ -16,7 +18,29 @@
       --neon-gold: #fbbf24;
       --text: #f8fafc;
       --muted: #94a3b8;
+      --words-bg: rgba(155, 93, 229, 0.12);
+      --words-border: rgba(155, 93, 229, 0.4);
+      --modal-bg: #111827;
     }
+
+    body.light-mode {
+      --bg: #f1f5f9;
+      --screen-bg: #ffffff;
+      --screen-border: rgba(13, 148, 136, 0.35);
+      --btn-bg: #ffffff;
+      --btn-active: #e2e8f0;
+      --btn-op: #f3e8ff;
+      --neon-cyan: #0d9488;
+      --neon-purple: #7e22ce;
+      --neon-orange: #ea580c;
+      --neon-gold: #d97706;
+      --text: #0f172a;
+      --muted: #64748b;
+      --words-bg: rgba(126, 34, 206, 0.07);
+      --words-border: rgba(126, 34, 206, 0.3);
+      --modal-bg: #ffffff;
+    }
+
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; font-family: system-ui, -apple-system, sans-serif; user-select: none; }
     body {
       margin: 0; padding: 12px;
@@ -27,14 +51,40 @@
       flex-direction: column;
       justify-content: space-between;
       overflow: hidden;
+      transition: background-color 0.25s, color 0.25s;
     }
+
     .top-bar {
       display: flex; justify-content: space-between; align-items: center;
-      padding: 4px 8px; font-size: 13px; font-weight: 900; color: var(--neon-cyan);
+      gap: 6px; padding: 2px 4px;
     }
+    .brand-title {
+      font-size: 13.5px; font-weight: 900; color: var(--neon-cyan);
+      display: flex; align-items: center; gap: 4px;
+    }
+    .top-actions {
+      display: flex; align-items: center; gap: 6px;
+    }
+    .top-btn {
+      background: var(--screen-bg);
+      border: 1.5px solid var(--screen-border);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 6px 10px;
+      font-size: 11.5px;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex; align-items: center; gap: 4px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    }
+    .top-btn.apps-btn {
+      border-color: var(--neon-purple);
+      color: var(--neon-purple);
+    }
+
     .display-card {
       background: var(--screen-bg);
-      border: 1.5px solid rgba(0, 245, 212, 0.28);
+      border: 1.5px solid var(--screen-border);
       border-radius: 22px;
       padding: 14px 16px;
       flex: 1;
@@ -43,7 +93,7 @@
       flex-direction: column;
       justify-content: flex-end;
       overflow-y: auto;
-      box-shadow: inset 0 0 25px rgba(0,0,0,0.45);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.12);
     }
     .expr-box {
       direction: ltr;
@@ -65,7 +115,7 @@
       line-height: 1.35;
       letter-spacing: 0.5px;
       padding-bottom: 8px;
-      border-bottom: 1px dashed rgba(148,163,184,0.2);
+      border-bottom: 1px dashed rgba(148,163,184,0.28);
     }
     .words-breakdown-box {
       margin-top: 10px;
@@ -74,8 +124,8 @@
       font-size: 13.5px;
       line-height: 1.75;
       color: var(--text);
-      background: rgba(155, 93, 229, 0.12);
-      border: 1px solid rgba(155, 93, 229, 0.4);
+      background: var(--words-bg);
+      border: 1px solid var(--words-border);
       border-radius: 14px;
       padding: 10px 12px;
       max-height: 38%;
@@ -83,7 +133,7 @@
     }
     .unit-badge {
       display: inline-block;
-      background: rgba(0, 245, 212, 0.14);
+      background: rgba(0, 245, 212, 0.12);
       border: 1px solid var(--neon-cyan);
       color: var(--neon-cyan);
       border-radius: 8px;
@@ -93,10 +143,11 @@
       font-size: 12.5px;
     }
     .unit-badge.high-tier {
-      background: rgba(251, 191, 36, 0.16);
+      background: rgba(251, 191, 36, 0.15);
       border-color: var(--neon-gold);
       color: var(--neon-gold);
     }
+
     .keypad {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -105,10 +156,10 @@
     }
     .key-btn {
       background: var(--btn-bg);
-      border: 1px solid rgba(255,255,255,0.07);
+      border: 1px solid rgba(148,163,184,0.18);
       color: var(--text);
       border-radius: 18px;
-      height: 62px;
+      height: 61px;
       font-size: 23px;
       font-weight: 800;
       display: flex;
@@ -116,27 +167,65 @@
       justify-content: center;
       cursor: pointer;
       transition: transform 0.08s, background 0.15s;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     }
-    .key-btn:active { transform: scale(0.93); background: #22304d; }
+    .key-btn:active { transform: scale(0.93); background: var(--btn-active); }
     .key-op { background: var(--btn-op); color: var(--neon-purple); border-color: rgba(155,93,229,0.35); font-size: 25px; }
-    .key-ac { background: rgba(239,68,68,0.18); color: #f87171; border-color: rgba(239,68,68,0.4); font-size: 20px; }
-    .key-del { background: rgba(249,115,22,0.18); color: var(--neon-orange); border-color: rgba(249,115,22,0.4); font-size: 20px; }
+    .key-ac { background: rgba(239,68,68,0.15); color: #ef4444; border-color: rgba(239,68,68,0.35); font-size: 20px; }
+    .key-del { background: rgba(249,115,22,0.15); color: var(--neon-orange); border-color: rgba(249,115,22,0.35); font-size: 20px; }
     .key-eq {
-      background: linear-gradient(135deg, var(--neon-orange), #fbbf24);
+      background: linear-gradient(135deg, #f97316, #fbbf24);
       color: #070a12;
       font-size: 28px;
       font-weight: 900;
       border: none;
     }
     .key-zeros { font-size: 18px; color: var(--neon-gold); font-weight: 900; }
+
+    /* پاپ‌آپ سایر برنامه‌ها */
+    .modal-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(0, 0, 0, 0.68);
+      backdrop-filter: blur(5px);
+      display: none; align-items: center; justify-content: center;
+      padding: 18px; z-index: 999;
+    }
+    .modal-card {
+      background: var(--modal-bg);
+      border: 2px solid var(--neon-purple);
+      border-radius: 22px;
+      padding: 20px 18px;
+      width: 100%; max-width: 370px;
+      text-align: center;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.45);
+    }
+    .store-btn {
+      width: 100%; padding: 13px; border-radius: 14px;
+      font-size: 14px; font-weight: 900; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      margin-top: 10px; border: none;
+    }
+    .btn-bazaar {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #ffffff;
+    }
+    .btn-myket {
+      background: linear-gradient(135deg, #0ea5e9, #2563eb);
+      color: #ffffff;
+    }
   </style>
 </head>
 <body>
 
   <div class="top-bar">
-    <span>⚡ MegaCalc <small style="color:var(--neon-gold);">ضد e+ و نامحدود</small></span>
-    <button onclick="copyExactResult()" style="background:rgba(0,245,212,0.12); border:1px solid var(--neon-cyan); color:var(--neon-cyan); border-radius:9px; padding:4px 10px; font-size:11.5px; font-weight:800; cursor:pointer;">📋 کپی عدد کامل</button>
+    <div class="brand-title">
+      <span>♾️ MegaCalc</span>
+    </div>
+    <div class="top-actions">
+      <button class="top-btn apps-btn" onclick="openOtherAppsModal()">📱 سایر برنامه‌ها</button>
+      <button class="top-btn" onclick="copyExactResult()">📋 کپی</button>
+      <button class="top-btn" id="themeBtn" onclick="toggleTheme()" title="تغییر تم">☀️</button>
+    </div>
   </div>
 
   <div class="display-card" id="displayCard">
@@ -174,11 +263,30 @@
     <button class="key-btn key-eq" onclick="lockResult()">=</button>
   </div>
 
+  <!-- پاپ‌آپ سایر برنامه‌ها با انتخاب بازار یا مایکت -->
+  <div class="modal-backdrop" id="otherAppsModal" onclick="if(event.target===this) closeOtherAppsModal()">
+    <div class="modal-card">
+      <div style="font-size: 34px; margin-bottom: 6px;">🚀</div>
+      <div style="font-size: 16px; font-weight: 900; color: var(--neon-cyan); margin-bottom: 8px;">سایر برنامه‌های کاربردی ما</div>
+      <p style="font-size: 13px; color: var(--muted); line-height: 1.65; margin: 0 0 14px 0;">
+        سایر برنامه‌ها (مثل هوش مصنوعی تناسب اندام <b>BodyMod</b>) رو می‌خوای چطوری و از کدوم مارکت نصب کنی؟
+      </p>
+      <button class="store-btn btn-bazaar" onclick="openStore('bazaar')">
+        🛒 مشاهده و نصب از کافه‌بازار
+      </button>
+      <button class="store-btn btn-myket" onclick="openStore('myket')">
+        🟦 مشاهده و نصب از مایکت
+      </button>
+      <button onclick="closeOtherAppsModal()" style="margin-top: 14px; background: none; border: none; color: var(--muted); font-size: 12.5px; font-weight: 800; cursor: pointer;">
+        بستن پنجره ✕
+      </button>
+    </div>
+  </div>
+
   <script>
     let rawExpression = "";
     let lastCleanResult = "0";
 
-    // نام تمام طبقات ۳ رقمی تا ۶۶ رقم!
     const SCALE_NAMES = [
       "",
       "هزار",
@@ -204,6 +312,42 @@
       "ویجینتیلیون"
     ];
 
+    // مدیریت تم تاریک و روشن
+    function initTheme() {
+      const saved = localStorage.getItem("megacalc_theme") || "dark";
+      if (saved === "light") {
+        document.body.classList.add("light-mode");
+        document.getElementById("themeBtn").textContent = "🌙";
+      } else {
+        document.body.classList.remove("light-mode");
+        document.getElementById("themeBtn").textContent = "☀️";
+      }
+    }
+
+    function toggleTheme() {
+      const isLight = document.body.classList.toggle("light-mode");
+      localStorage.setItem("megacalc_theme", isLight ? "light" : "dark");
+      document.getElementById("themeBtn").textContent = isLight ? "🌙" : "☀️";
+    }
+
+    function openOtherAppsModal() {
+      document.getElementById("otherAppsModal").style.display = "flex";
+    }
+
+    function closeOtherAppsModal() {
+      document.getElementById("otherAppsModal").style.display = "none";
+    }
+
+    function openStore(store) {
+      // لینک مستقیم به صفحه بادی‌مود در بازار و مایکت
+      const pkg = "ir.matinmohammadi.bodymod";
+      if (store === "bazaar") {
+        window.location.href = "https://cafebazaar.ir/app/" + pkg;
+      } else {
+        window.location.href = "https://myket.ir/app/" + pkg;
+      }
+    }
+
     function addCommasToInteger(intStr) {
       let sign = "";
       if (intStr.startsWith("-")) {
@@ -222,7 +366,6 @@
       });
     }
 
-    // موتور محاسبه دقیق اعداد اعشاری و صحیحِ بی‌نهایت بزرگ با BigInt (بدون هیچ گونه e+)
     function parseBigDecimal(str) {
       let sign = 1n;
       if (str.startsWith("-")) { sign = -1n; str = str.slice(1); }
@@ -308,7 +451,6 @@
 
       if (!tokens.length) return "0";
 
-      // اولویت اول: ضرب و تقسیم
       let pass1 = [tokens[0]];
       for (let j = 1; j < tokens.length; j += 2) {
         const opObj = tokens[j];
@@ -324,7 +466,6 @@
         }
       }
 
-      // اولویت دوم: جمع و تفریق
       let acc = pass1[0].bd;
       for (let j = 1; j < pass1.length; j += 2) {
         const op = pass1[j].op;
@@ -336,7 +477,6 @@
       return formatBigDecimal(acc);
     }
 
-    // تبدیل عدد به تفکیک ۳ رقمی همراه با نام دقیق از میلیارد به بالا
     function buildScaleBreakdownHtml(numStr) {
       if (!numStr || numStr === "0") return "۰ (صفر)";
       let isNeg = false;
@@ -346,7 +486,6 @@
       const intStr = parts[0] || "0";
       const fracStr = parts[1] || "";
 
-      // شکستن از راست به بسته‌های ۳ رقمی
       const groups = [];
       for (let i = intStr.length; i > 0; i -= 3) {
         groups.push(intStr.slice(Math.max(0, i - 3), i));
@@ -386,7 +525,6 @@
         const parts = exactStr.split(".");
         const formattedExact = addCommasToInteger(parts[0]) + (parts[1] ? "." + parts[1] : "");
 
-        // تنظیم هوشمند سایز فونت اگر عدد خیلی غول‌پیکر شد، اما همیشه کامل و چندخطی!
         if (formattedExact.length > 36) rawEl.style.fontSize = "19px";
         else if (formattedExact.length > 20) rawEl.style.fontSize = "23px";
         else rawEl.style.fontSize = "28px";
@@ -401,11 +539,7 @@
       }
     }
 
-    function appendDigits(d) {
-      rawExpression += d;
-      updateScreen();
-    }
-
+    function appendDigits(d) { rawExpression += d; updateScreen(); }
     function appendOp(op) {
       if (!rawExpression) {
         if (op === "-") { rawExpression = "-"; updateScreen(); }
@@ -418,7 +552,6 @@
       }
       updateScreen();
     }
-
     function appendDot() {
       const parts = rawExpression.split(/[×÷+\-]/);
       const currentNum = parts[parts.length - 1] || "";
@@ -427,25 +560,14 @@
         updateScreen();
       }
     }
-
-    function backspace() {
-      rawExpression = rawExpression.slice(0, -1);
-      updateScreen();
-    }
-
-    function clearAll() {
-      rawExpression = "";
-      lastCleanResult = "0";
-      updateScreen();
-    }
-
+    function backspace() { rawExpression = rawExpression.slice(0, -1); updateScreen(); }
+    function clearAll() { rawExpression = ""; lastCleanResult = "0"; updateScreen(); }
     function lockResult() {
       if (lastCleanResult && lastCleanResult !== "0") {
         rawExpression = lastCleanResult;
         updateScreen();
       }
     }
-
     function copyExactResult() {
       const parts = lastCleanResult.split(".");
       const formatted = addCommasToInteger(parts[0]) + (parts[1] ? "." + parts[1] : "");
@@ -454,6 +576,8 @@
         alert("✅ عدد کامل کپی شد:\n" + formatted);
       }
     }
+
+    initTheme();
   </script>
 </body>
 </html>
