@@ -21,7 +21,7 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Clean & Prepare Android Project
+      - name: Prepare Android Project & Copy PNG Icon
         run: |
           rm -rf android-app
           mkdir -p android-app/app/src/main/java/ir/matinmohammadi/megacalc
@@ -29,143 +29,121 @@ jobs:
           mkdir -p android-app/app/src/main/res/mipmap-xxxhdpi
 
           cp index.html android-app/app/src/main/assets/index.html
-
-          # تبدیل خودکار عکس mega-calc_icon.jpg به PNG استاندارد 512x512 برای اندروید
-          python3 -c '
-          from PIL import Image
-          import os
-          src = "mega-calc_icon.jpg" if os.path.exists("mega-calc_icon.jpg") else "icon.jpg"
-          img = Image.open(src).convert("RGBA").resize((512, 512))
-          img.save("android-app/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png", "PNG")
-          '
+          cp mega-calc_icon.png android-app/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
 
       - name: Inject Keystore from GitHub Secrets
         env:
           KEYSTORE_B64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
         run: |
-          if [ -n "$KEYSTORE_B64" ]; then
-            echo "$KEYSTORE_B64" | tr -d ' \n\r\t' | base64 --decode > android-app/app/release.keystore
-          else
-            echo "⚠️ Secret not found, generating fallback keystore..."
-            keytool -genkey -v -keystore android-app/app/release.keystore \
-              -alias megacalc_master_key -keyalg RSA -keysize 2048 -validity 10000 \
-              -storepass Matin1383 -keypass Matin1383 \
-              -dname "CN=Matin Mohammadi, OU=MegaCalc, O=MatinTech, L=Urmia, S=WA, C=IR"
-          fi
+          echo "$KEYSTORE_B64" | tr -d ' \n\r\t' | base64 --decode > android-app/app/release.keystore
 
       - name: Build Signed Release APK
         run: |
-          cat << 'GRADLE_ROOT' > android-app/settings.gradle
-          rootProject.name = "MegaCalc"
-          include ':app'
-          GRADLE_ROOT
+          printf '%s\n' \
+            'rootProject.name = "MegaCalc"' \
+            'include ":app"' \
+            > android-app/settings.gradle
 
-          cat << 'GRADLE_PROPS' > android-app/gradle.properties
-          org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
-          android.useAndroidX=false
-          GRADLE_PROPS
+          printf '%s\n' \
+            'org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8' \
+            'android.useAndroidX=false' \
+            > android-app/gradle.properties
 
-          cat << 'GRADLE_BUILD' > android-app/build.gradle
-          buildscript {
-              repositories { google(); mavenCentral() }
-              dependencies { classpath 'com.android.tools.build:gradle:8.2.2' }
-          }
-          allprojects { repositories { google(); mavenCentral() } }
-          GRADLE_BUILD
+          printf '%s\n' \
+            'buildscript {' \
+            '    repositories { google(); mavenCentral() }' \
+            '    dependencies { classpath "com.android.tools.build:gradle:8.2.2" }' \
+            '}' \
+            'allprojects { repositories { google(); mavenCentral() } }' \
+            > android-app/build.gradle
 
-          cat << 'APP_BUILD' > android-app/app/build.gradle
-          apply plugin: 'com.android.application'
-          android {
-              namespace 'ir.matinmohammadi.megacalc'
-              compileSdkVersion 34
-              defaultConfig {
-                  applicationId "ir.matinmohammadi.megacalc"
-                  minSdkVersion 21
-                  targetSdkVersion 34
-                  versionCode 10
-                  versionName "1.5.0"
-              }
-              signingConfigs {
-                  release {
-                      storeFile file("release.keystore")
-                      storePassword "Matin1383"
-                      keyAlias "megacalc_master_key"
-                      keyPassword "Matin1383"
-                  }
-              }
-              buildTypes {
-                  release {
-                      signingConfig signingConfigs.release
-                      minifyEnabled false
-                  }
-              }
-              compileOptions {
-                  sourceCompatibility JavaVersion.VERSION_17
-                  targetCompatibility JavaVersion.VERSION_17
-              }
-          }
-          APP_BUILD
+          printf '%s\n' \
+            'apply plugin: "com.android.application"' \
+            'android {' \
+            '    namespace "ir.matinmohammadi.megacalc"' \
+            '    compileSdkVersion 34' \
+            '    defaultConfig {' \
+            '        applicationId "ir.matinmohammadi.megacalc"' \
+            '        minSdkVersion 21' \
+            '        targetSdkVersion 34' \
+            '        versionCode 16' \
+            '        versionName "1.6.0"' \
+            '    }' \
+            '    signingConfigs {' \
+            '        release {' \
+            '            storeFile file("release.keystore")' \
+            '            storePassword "Matin1383"' \
+            '            keyAlias "megacalc_master_key"' \
+            '            keyPassword "Matin1383"' \
+            '        }' \
+            '    }' \
+            '    buildTypes {' \
+            '        release {' \
+            '            signingConfig signingConfigs.release' \
+            '            minifyEnabled false' \
+            '        }' \
+            '    }' \
+            '    compileOptions {' \
+            '        sourceCompatibility JavaVersion.VERSION_17' \
+            '        targetCompatibility JavaVersion.VERSION_17' \
+            '    }' \
+            '}' \
+            > android-app/app/build.gradle
 
-          cat << 'MANIFEST' > android-app/app/src/main/AndroidManifest.xml
-          <?xml version="1.0" encoding="utf-8"?>
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <application
-                  android:label="MegaCalc"
-                  android:icon="@mipmap/ic_launcher"
-                  android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
-                  <activity
-                      android:name=".MainActivity"
-                      android:exported="true"
-                      android:configChanges="orientation|screenSize|keyboardHidden">
-                      <intent-filter>
-                          <action android:name="android.intent.action.MAIN" />
-                          <category android:name="android.intent.category.LAUNCHER" />
-                      </intent-filter>
-                  </activity>
-              </application>
-          </manifest>
-          MANIFEST
+          printf '%s\n' \
+            '<?xml version="1.0" encoding="utf-8"?>' \
+            '<manifest xmlns:android="http://schemas.android.com/apk/res/android">' \
+            '    <application android:label="MegaCalc" android:icon="@mipmap/ic_launcher" android:theme="@android:style/Theme.DeviceDefault.NoActionBar">' \
+            '        <activity android:name=".MainActivity" android:exported="true" android:configChanges="orientation|screenSize|keyboardHidden">' \
+            '            <intent-filter>' \
+            '                <action android:name="android.intent.action.MAIN" />' \
+            '                <category android:name="android.intent.category.LAUNCHER" />' \
+            '            </intent-filter>' \
+            '        </activity>' \
+            '    </application>' \
+            '</manifest>' \
+            > android-app/app/src/main/AndroidManifest.xml
 
-          cat << 'JAVA_MAIN' > android-app/app/src/main/java/ir/matinmohammadi/megacalc/MainActivity.java
-          package ir.matinmohammadi.megacalc;
-          import android.app.Activity;
-          import android.content.Intent;
-          import android.net.Uri;
-          import android.os.Bundle;
-          import android.webkit.WebSettings;
-          import android.webkit.WebView;
-          import android.webkit.WebViewClient;
-          import android.webkit.WebChromeClient;
-          import android.graphics.Color;
-          public class MainActivity extends Activity {
-              @Override
-              protected void onCreate(Bundle savedInstanceState) {
-                  super.onCreate(savedInstanceState);
-                  WebView webView = new WebView(this);
-                  webView.setBackgroundColor(Color.parseColor("#070a12"));
-                  WebSettings settings = webView.getSettings();
-                  settings.setJavaScriptEnabled(true);
-                  settings.setDomStorageEnabled(true);
-                  webView.setWebChromeClient(new WebChromeClient());
-                  webView.setWebViewClient(new WebViewClient() {
-                      @Override
-                      public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                          if (url != null && (url.startsWith("http://") || url.startsWith("https://"))) {
-                              Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-                              startActivity(intent);
-                              return true;
-                          }
-                          return false;
-                      }
-                  });
-                  setContentView(webView);
-                  webView.loadUrl("file:///android_asset/index.html");
-              }
-          }
-          JAVA_MAIN
+          printf '%s\n' \
+            'package ir.matinmohammadi.megacalc;' \
+            'import android.app.Activity;' \
+            'import android.content.Intent;' \
+            'import android.net.Uri;' \
+            'import android.os.Bundle;' \
+            'import android.webkit.WebSettings;' \
+            'import android.webkit.WebView;' \
+            'import android.webkit.WebViewClient;' \
+            'import android.webkit.WebChromeClient;' \
+            'import android.graphics.Color;' \
+            'public class MainActivity extends Activity {' \
+            '    @Override' \
+            '    protected void onCreate(Bundle savedInstanceState) {' \
+            '        super.onCreate(savedInstanceState);' \
+            '        WebView webView = new WebView(this);' \
+            '        webView.setBackgroundColor(Color.parseColor("#070a12"));' \
+            '        WebSettings settings = webView.getSettings();' \
+            '        settings.setJavaScriptEnabled(true);' \
+            '        settings.setDomStorageEnabled(true);' \
+            '        webView.setWebChromeClient(new WebChromeClient());' \
+            '        webView.setWebViewClient(new WebViewClient() {' \
+            '            @Override' \
+            '            public boolean shouldOverrideUrlLoading(WebView view, String url) {' \
+            '                if (url != null && (url.startsWith("http://") || url.startsWith("https://"))) {' \
+            '                    Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));' \
+            '                    startActivity(intent);' \
+            '                    return true;' \
+            '                }' \
+            '                return false;' \
+            '            }' \
+            '        });' \
+            '        setContentView(webView);' \
+            '        webView.loadUrl("file:///android_asset/index.html");' \
+            '    }' \
+            '}' \
+            > android-app/app/src/main/java/ir/matinmohammadi/megacalc/MainActivity.java
 
           cd android-app
-          gradle assembleRelease --no-daemon --stacktrace
+          gradle assembleRelease --no-daemon
 
       - name: Upload Signed Release APK
         uses: actions/upload-artifact@v4
@@ -177,8 +155,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: success()
         with:
-          tag_name: v1.5.${{ github.run_number }}
-          name: "MegaCalc v1.5.${{ github.run_number }} (Custom Icon Edition)"
+          tag_name: v1.6.${{ github.run_number }}
+          name: "MegaCalc v1.6.${{ github.run_number }} (PNG Icon + Smooth Update)"
           files: android-app/app/build/outputs/apk/release/app-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
