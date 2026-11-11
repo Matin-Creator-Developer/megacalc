@@ -21,22 +21,40 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Inject Keystore from GitHub Secrets
+      - name: Clean & Prepare Android Project
         run: |
-          mkdir -p android-app/app
-          echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 --decode > android-app/app/release.keystore
-
-      - name: Build Signed Release APK
-        run: |
+          rm -rf android-app
           mkdir -p android-app/app/src/main/java/ir/matinmohammadi/megacalc
           mkdir -p android-app/app/src/main/assets
           mkdir -p android-app/app/src/main/res/mipmap-xxxhdpi
-          
-          cp index.html android-app/app/src/main/assets/index.html
-          
-          # کپی کردن عکس آیکون شما به جای آیکون دیفالت
-          cp mega-calc_icon.jpg android-app/app/src/main/res/mipmap-xxxhdpi/ic_launcher.jpg
 
+          cp index.html android-app/app/src/main/assets/index.html
+
+          # تبدیل خودکار عکس mega-calc_icon.jpg به PNG استاندارد 512x512 برای اندروید
+          python3 -c '
+          from PIL import Image
+          import os
+          src = "mega-calc_icon.jpg" if os.path.exists("mega-calc_icon.jpg") else "icon.jpg"
+          img = Image.open(src).convert("RGBA").resize((512, 512))
+          img.save("android-app/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png", "PNG")
+          '
+
+      - name: Inject Keystore from GitHub Secrets
+        env:
+          KEYSTORE_B64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | tr -d ' \n\r\t' | base64 --decode > android-app/app/release.keystore
+          else
+            echo "⚠️ Secret not found, generating fallback keystore..."
+            keytool -genkey -v -keystore android-app/app/release.keystore \
+              -alias megacalc_master_key -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass Matin1383 -keypass Matin1383 \
+              -dname "CN=Matin Mohammadi, OU=MegaCalc, O=MatinTech, L=Urmia, S=WA, C=IR"
+          fi
+
+      - name: Build Signed Release APK
+        run: |
           cat << 'GRADLE_ROOT' > android-app/settings.gradle
           rootProject.name = "MegaCalc"
           include ':app'
@@ -64,7 +82,7 @@ jobs:
                   applicationId "ir.matinmohammadi.megacalc"
                   minSdkVersion 21
                   targetSdkVersion 34
-                  versionCode 5
+                  versionCode 10
                   versionName "1.5.0"
               }
               signingConfigs {
@@ -91,8 +109,14 @@ jobs:
           cat << 'MANIFEST' > android-app/app/src/main/AndroidManifest.xml
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <application android:label="MegaCalc" android:icon="@mipmap/ic_launcher" android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
-                  <activity android:name=".MainActivity" android:exported="true" android:configChanges="orientation|screenSize|keyboardHidden">
+              <application
+                  android:label="MegaCalc"
+                  android:icon="@mipmap/ic_launcher"
+                  android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true"
+                      android:configChanges="orientation|screenSize|keyboardHidden">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN" />
                           <category android:name="android.intent.category.LAUNCHER" />
@@ -141,7 +165,7 @@ jobs:
           JAVA_MAIN
 
           cd android-app
-          gradle assembleRelease --no-daemon
+          gradle assembleRelease --no-daemon --stacktrace
 
       - name: Upload Signed Release APK
         uses: actions/upload-artifact@v4
