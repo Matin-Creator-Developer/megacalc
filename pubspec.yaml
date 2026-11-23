@@ -1,0 +1,31 @@
+name: megacalc
+description: ماشین‌حساب فضایی‌ها - محاسبات نجومی و بی‌نهایت با تبدیل اعداد بزرگ به حروف فارسی
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  url_launcher: ^6.2.6
+  shared_preferences: ^2.2.3
+  video_player: ^2.9.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_launcher_icons: ^0.13.1
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "mega-calc_icon.png"
+  adaptive_icon_background: "#070a12"
+  adaptive_icon_foreground: "mega-calc_icon.png"
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/spacial_calculator.mp4

@@ -1,1 +1,8 @@
-android-app/
+*.keystore
+*.jks
+*.bak
+key.properties
+build/
+.dart_tool/
+.packages
+editor.py

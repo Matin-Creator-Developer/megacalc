@@ -1,0 +1,104 @@
+name: Build Signed MegaCalc APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Generate Android Scaffold
+        run: |
+          cp pubspec.yaml pubspec.yaml.bak
+          cp lib/main.dart lib/main.dart.bak
+          flutter create . --platforms=android --org ir.matinmohammadi --project-name megacalc
+          mv pubspec.yaml.bak pubspec.yaml
+          mv lib/main.dart.bak lib/main.dart
+
+      - name: Configure Manifest (App Name, Internet Permission & Store Queries)
+        run: |
+          python3 - <<'PY'
+          p = "android/app/src/main/AndroidManifest.xml"
+          with open(p, "r", encoding="utf-8") as f:
+              xml = f.read()
+          xml = xml.replace('android:label="megacalc"', 'android:label="ماشین‌حساب فضایی‌ها"')
+          if "android.permission.INTERNET" not in xml:
+              xml = xml.replace(
+                  "<application",
+                  '    <uses-permission android:name="android.permission.INTERNET"/>\n    <application',
+                  1
+              )
+          if "<queries>" not in xml:
+              queries = (
+                  "    <queries>\n"
+                  "        <intent>\n"
+                  "            <action android:name=\"android.intent.action.VIEW\"/>\n"
+                  "            <data android:scheme=\"https\"/>\n"
+                  "        </intent>\n"
+                  "    </queries>\n"
+              )
+              xml = xml.replace("</manifest>", queries + "</manifest>")
+          with open(p, "w", encoding="utf-8") as f:
+              f.write(xml)
+          PY
+
+      - name: Generate Launcher Icon & Build Release APK
+        run: |
+          flutter pub get
+          dart run flutter_launcher_icons
+          flutter build apk --release
+          cp build/app/outputs/flutter-apk/app-release.apk "MegaCalc-v1.0.0.apk"
+
+      - name: Sign APK with Official Keystore (Secrets)
+        env:
+          KEYSTORE_B64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ] || [ -z "$KEYSTORE_PASSWORD" ] || [ -z "$KEY_ALIAS" ]; then
+            echo "❌ خطا: یکی از سکرت‌های RELEASE_KEYSTORE_BASE64 یا KEYSTORE_PASSWORD یا KEY_ALIAS خالی است!"
+            exit 1
+          fi
+          echo "$KEYSTORE_B64" | tr -d ' \n\r\t' | base64 --decode > release.keystore
+          if ! keytool -list -v -keystore release.keystore -alias "$KEY_ALIAS" -storepass "$KEYSTORE_PASSWORD" | grep -E "SHA1:|SHA256:"; then
+            echo "❌ خطا: کلید یا رمز داخل سکرت معتبر نیست!"
+            rm -f release.keystore
+            exit 1
+          fi
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name "apksigner" | sort -V | tail -n 1)
+          "$APKSIGNER" sign --ks release.keystore --ks-key-alias "$KEY_ALIAS" --ks-pass "pass:$KEYSTORE_PASSWORD" --key-pass "pass:$KEYSTORE_PASSWORD" "MegaCalc-v1.0.0.apk"
+          "$APKSIGNER" verify --print-certs "MegaCalc-v1.0.0.apk" | grep -E "SHA-1|SHA-256"
+          rm -f release.keystore
+
+      - name: Upload Signed APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MegaCalc-Signed-APK
+          path: MegaCalc-v1.0.0.apk
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: success()
+        with:
+          tag_name: v1.0.0
+          name: "👽 ماشین‌حساب فضایی‌ها (MegaCalc v1.0.0)"
+          files: MegaCalc-v1.0.0.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
