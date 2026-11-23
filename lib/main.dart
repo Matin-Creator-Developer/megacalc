@@ -123,115 +123,96 @@ class _OfflineVideoGateState extends State<_OfflineVideoGate> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: const Color(0xFF070A12),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          if (_initialized)
-            FittedBox(
-              fit: BoxFit.cover,
-              child: SizedBox(
-                width: _controller.value.size.width,
-                height: _controller.value.size.height,
-                child: VideoPlayer(_controller),
-              ),
-            )
-          else
-            const Center(
-              child: CircularProgressIndicator(color: Color(0xFF00F5D4)),
-            ),
-
-          // گرادیانت ملایم پایین صفحه برای خوانایی دکمه‌ها
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(20, 42, 20, 26),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    const Color(0xFF070A12).withOpacity(0.88),
-                    const Color(0xFF070A12),
-                  ],
-                ),
-              ),
-              child: SafeArea(
-                top: false,
-                child: Row(
-                  children: [
-                    // دکمه مثلث پلی برای پخش مجدد ویدیو
-                    Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: _replayVideo,
-                        borderRadius: BorderRadius.circular(16),
-                        child: Ink(
-                          height: 52,
-                          width: 56,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF111827).withOpacity(0.92),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: _isPlaying
-                                  ? widget.neonPurple.withOpacity(0.55)
-                                  : widget.neonCyan,
-                              width: 2,
-                            ),
-                          ),
-                          child: Icon(
-                            Icons.play_arrow_rounded,
-                            color: _isPlaying
-                                ? widget.neonPurple
-                                : widget.neonCyan,
-                            size: 32,
-                          ),
+      color: Colors.black,
+      child: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: Center(
+                child: _initialized
+                    ? InteractiveViewer(
+                        minScale: 1.0,
+                        maxScale: 4.0,
+                        child: AspectRatio(
+                          aspectRatio: 9 / 16,
+                          child: VideoPlayer(_controller),
                         ),
+                      )
+                    : const CircularProgressIndicator(
+                        color: Color(0xFF00F5D4),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    // دکمه بررسی مجدد اتصال اینترنت
-                    Expanded(
-                      child: SizedBox(
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
+              child: Row(
+                children: [
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: _replayVideo,
+                      borderRadius: BorderRadius.circular(16),
+                      child: Ink(
                         height: 52,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: widget.neonCyan,
-                            foregroundColor: const Color(0xFF070A12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
+                        width: 56,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF111827),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: _isPlaying
+                                ? widget.neonPurple.withOpacity(0.55)
+                                : widget.neonCyan,
+                            width: 2,
                           ),
-                          onPressed:
-                              widget.isCheckingNet ? null : widget.onRetry,
-                          child: widget.isCheckingNet
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.5,
-                                    color: Color(0xFF070A12),
-                                  ),
-                                )
-                              : const Text(
-                                  '🔄 بررسی مجدد اتصال',
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
+                        ),
+                        child: Icon(
+                          Icons.play_arrow_rounded,
+                          color: _isPlaying
+                              ? widget.neonPurple
+                              : widget.neonCyan,
+                          size: 32,
                         ),
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: SizedBox(
+                      height: 52,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: widget.neonCyan,
+                          foregroundColor: const Color(0xFF070A12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        onPressed:
+                            widget.isCheckingNet ? null : widget.onRetry,
+                        child: widget.isCheckingNet
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                  color: Color(0xFF070A12),
+                                ),
+                              )
+                            : const Text(
+                                'تلاش مجدد',
+                                style: TextStyle(
+                                  fontSize: 15.5,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
